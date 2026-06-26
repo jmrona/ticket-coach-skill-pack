@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "external_directory": {
+      "~/.config/opencode/data/cognitive-profile/**": "allow"
+    },
+    "edit": {
+      "~/.config/opencode/data/cognitive-profile/profile.json": "allow",
+      "~/.config/opencode/data/cognitive-profile/drift-log.jsonl": "allow"
+    },
+    "read": {
+      "~/.config/opencode/data/cognitive-profile/profile.json": "allow",
+      "~/.config/opencode/data/cognitive-profile/drift-log.jsonl": "allow"
+    }
+  }
+}
