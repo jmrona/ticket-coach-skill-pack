@@ -15,6 +15,8 @@ The user **never** edits scores directly. They can only:
 
 ## File permissions
 
+**General rule for every read in this skill**: always check whether a file exists before attempting to read it (e.g. a file-exists/list check), rather than reading directly and handling the failure. A missing file is frequently the normal, expected first-run state for this skill (no profile yet, no drift logged yet, no scorecards yet) — never assume its absence is a file-system error, and never let a raw "file not found" surface to the user or appear as visible tool-call noise. Every FLOW below that reads a file follows this rule; it's stated once here rather than repeated in each FLOW's steps below, except where worth calling out explicitly for clarity.
+
 This skill reads and writes exactly three data files:
 
 ```
@@ -99,8 +101,8 @@ Does profile.json exist?
 
 ## FLOW B — Reassessment requested by the user
 
-1. Read the current `profile.json`.
-2. Check for accumulated entries in `drift-log.jsonl` (see "Observed evidence logging" below).
+1. Read the current `profile.json` (FLOW B is only reached when the decision flow has already confirmed it exists, so a direct read is fine here).
+2. Check whether `drift-log.jsonl` exists before reading it — it may not exist yet if no consuming skill has logged a signal so far, which is normal and not an error. If it doesn't exist, proceed to step 3 with no drift evidence to prioritise. If it exists, read it (see "Observed evidence logging" below).
 3. Generate 3–5 qualitative statements in plain prose (NO scores or technical labels shown), prioritising axes with drift evidence, or covering all axes if there is no specific signal. Example format:
    > "You've recently seemed to prefer seeing a code example before I explain the theory. How much do you agree with that?" → 1–5 scale.
 4. For each response, apply:
@@ -120,11 +122,13 @@ Does profile.json exist?
 
 ## FLOW C — Read for another skill (e.g. ticket-coach)
 
-1. Read `profile.json`.
-2. If it exists, return the full document (`cognitive_profile`, `cognitive_weights`, `background_context`) to the consuming skill, with status `profile_found`. The user is not informed of this read operation — it is transparent, like any other configuration read.
-3. If `profile.json` does not exist, read `onboarding-preference.json` (see its structure below):
-   - If it exists and `declined: true` → return status `declined_previously` to the consuming skill, with no further action. This skill does not re-ask the user and does not expect the consuming skill to ask either, unless the user explicitly requests a profile in that moment (e.g. "actually, let's set up that learning profile now") — in that case, treat it as a fresh explicit request and proceed to FLOW A, then update `onboarding-preference.json` to `declined: false` afterwards.
-   - If it does not exist, or exists with `declined: false` → return status `no_profile_no_decision` to the consuming skill. This tells the consuming skill it's appropriate to offer the user the choice (see "Offering profile creation" below) — this skill does not initiate that offer itself, since it has no way to interject in another skill's conversation; the consuming skill is responsible for presenting the offer at a natural point and then calling back into this skill with the user's answer.
+1. Check whether `profile.json` exists **before** attempting to read it (e.g. via a file-exists/list check, not a direct read-and-catch) — this is the very first call this skill makes on a brand-new install, so its absence is an entirely normal, expected outcome, never a file-system error to surface.
+2. If it exists, read it and return the full document (`cognitive_profile`, `cognitive_weights`, `background_context`) to the consuming skill, with status `profile_found`. The user is not informed of this read operation — it is transparent, like any other configuration read.
+3. If `profile.json` does not exist, check whether `onboarding-preference.json` exists **before** attempting to read it (e.g. via a file-exists/list check, not a direct read-and-catch). Its absence on a first-ever run is the normal, expected case — not a file-system error — so the check must never surface a raw "file not found" error to the user or in tool output. Then:
+   - If it doesn't exist → treat this exactly the same as "exists with `declined: false`" (see below) — return status `no_profile_no_decision` directly, without ever attempting to read a file you've already confirmed isn't there.
+   - If it exists → read it and check its content:
+     - `declined: true` → return status `declined_previously` to the consuming skill, with no further action. This skill does not re-ask the user and does not expect the consuming skill to ask either, unless the user explicitly requests a profile in that moment (e.g. "actually, let's set up that learning profile now") — in that case, treat it as a fresh explicit request and proceed to FLOW A, then update `onboarding-preference.json` to `declined: false` afterwards.
+     - `declined: false` → return status `no_profile_no_decision` to the consuming skill. This tells the consuming skill it's appropriate to offer the user the choice (see "Offering profile creation" below) — this skill does not initiate that offer itself, since it has no way to interject in another skill's conversation; the consuming skill is responsible for presenting the offer at a natural point and then calling back into this skill with the user's answer.
 4. This skill does not automatically assume it should create a profile just because another skill asked for one — that decision always routes through the user, either via the consuming skill's offer (status `no_profile_no_decision`) or by being skipped entirely (status `declined_previously`).
 
 ### `onboarding-preference.json` structure
@@ -182,8 +186,8 @@ Triggered when `ticket-coach` finishes its own ticket close-out and hands over t
 
 ## FLOW E — Read scorecard history for another skill (e.g. learning-trend)
 
-1. Read `scorecards.jsonl` in full.
-2. Return all entries to the consuming skill, in the order they appear in the file (oldest first), with status `scorecards_found`. If the file doesn't exist yet or is empty, return status `no_scorecards_yet`.
+1. Check whether `scorecards.jsonl` exists **before** attempting to read it (e.g. via a file-exists/list check, not a direct read-and-catch). If it doesn't exist yet (no ticket has ever been completed via `ticket-coach`), this is normal and expected, never a file-system error — return status `no_scorecards_yet` directly without attempting a read.
+2. If it exists, read it in full and return all entries to the consuming skill, in the order they appear in the file (oldest first), with status `scorecards_found`. If it exists but is empty, also return status `no_scorecards_yet`.
 3. The user is not informed of this read operation — it is transparent, like FLOW C.
 4. This skill does not interpret or summarise the data for the consuming skill beyond returning it — presentation and trend analysis is `learning-trend`'s job, not this skill's.
 
@@ -210,7 +214,7 @@ Any skill that detects a possible cognitive drift signal (e.g. the user repeated
 
 Each line is a JSON object: `{ "date": "...", "axis": "concreteness", "signal": "...", "source_skill": "ticket-coach" }`.
 
-This skill (`cognitive-profile`) is solely responsible for reading `drift-log.jsonl`, deciding whether it crosses the evidence threshold (minimum 3 consistent signals out of the last 5 logged sessions) and internally triggering an `automatic_drift_threshold` reassessment — without the user needing to request it, but always confirming the result with them before applying it (showing qualitative statements just as in FLOW B; never applying silent changes without user confirmation).
+This skill (`cognitive-profile`) is solely responsible for reading `drift-log.jsonl`, deciding whether it crosses the evidence threshold (minimum 3 consistent signals out of the last 5 logged sessions) and internally triggering an `automatic_drift_threshold` reassessment — without the user needing to request it, but always confirming the result with them before applying it (showing qualitative statements just as in FLOW B; never applying silent changes without user confirmation). As with every other file in this skill, check whether `drift-log.jsonl` exists before reading it; its absence simply means no drift evidence has accumulated yet, not an error.
 
 By default, this skill ALWAYS confirms with the user before applying any score change, regardless of the trigger.
 
