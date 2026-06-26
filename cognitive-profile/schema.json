@@ -81,6 +81,10 @@
 			],
 			"properties": {
 				"is_english_native": { "type": "boolean" },
+				"expressive_vagueness_baseline": {
+					"type": "boolean",
+					"description": "Self-reported answer to whether the user generally finds it hard to put technical thinking into words. Used by ticket-coach to calibrate how readily an ambiguous-sounding response is treated as a comprehension signal versus just this person's normal communication style — true raises the bar before something is flagged as ambiguous, so concise or imprecise phrasing isn't repeatedly mistaken for not understanding."
+				},
 				"response_language_variant": {
 					"type": "object",
 					"description": "Maps a short language code to a regional variant code only (e.g. 'en': 'en-GB'). This field is NOT for vocabulary-complexity instructions or free-text style notes — that calibration is handled solely by is_english_native. Values must be short locale-style codes, not prose.",

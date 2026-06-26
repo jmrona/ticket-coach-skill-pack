@@ -70,6 +70,13 @@ These questions do not use the 1–5 scale; they take direct answers.
 >
 > Question: "Is English your first language?" → Yes / No
 
+### expressive_vagueness_baseline
+> ALWAYS show this brief clarification before the question, for the same reason as above — this isn't a judgement of ability, it's purely so ticket-coach doesn't mistake your normal way of expressing yourself for a sign of confusion:
+>
+> "This one is just so I calibrate how I read your answers later — some people are naturally concise or find it harder to put technical thinking into words on the spot, and that's completely normal. Knowing this in advance means I won't mistake your normal phrasing for a sign you're confused."
+>
+> Question: "Do you generally find it hard to put technical thinking into words, even when you understand the concept clearly?" → Yes / No
+
 ### known_technologies
 > **(Free-text answer. When calling the `question` tool, list at most one option — e.g. none, or a single neutral placeholder if the tool requires one — and rely on the tool's native custom-answer input for the actual response. Do not list two options that both mean "type your own answer".)**
 >
