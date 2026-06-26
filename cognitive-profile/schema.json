@@ -1,0 +1,278 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cognitive Profile",
+  "type": "object",
+  "required": [
+    "engineer_id",
+    "schema_version",
+    "last_updated_date",
+    "cognitive_profile",
+    "cognitive_weights",
+    "background_context",
+    "update_history"
+  ],
+  "properties": {
+    "engineer_id": { "type": "string" },
+    "schema_version": { "type": "string", "const": "1.0" },
+    "last_updated_date": { "type": "string", "format": "date" },
+
+    "cognitive_profile": {
+      "type": "object",
+      "required": ["concreteness", "structure", "modality", "autonomy", "abstraction_bridge"],
+      "properties": {
+        "concreteness": { "$ref": "#/$defs/concretenessAxis" },
+        "structure": { "$ref": "#/$defs/structureAxis" },
+        "modality": { "$ref": "#/$defs/modalityAxis" },
+        "autonomy": { "$ref": "#/$defs/autonomyAxis" },
+        "abstraction_bridge": { "$ref": "#/$defs/abstractionBridgeAxis" }
+      },
+      "additionalProperties": false
+    },
+
+    "cognitive_weights": {
+      "type": "object",
+      "required": [
+        "theory_first", "code_examples_first",
+        "system_overview_first", "incremental_build_up",
+        "narrative_explanation", "diagrams",
+        "guided_steps", "exploratory_sandbox",
+        "technical_precision", "real_world_analogies"
+      ],
+      "properties": {
+        "theory_first": { "$ref": "#/$defs/weight" },
+        "code_examples_first": { "$ref": "#/$defs/weight" },
+        "system_overview_first": { "$ref": "#/$defs/weight" },
+        "incremental_build_up": { "$ref": "#/$defs/weight" },
+        "narrative_explanation": { "$ref": "#/$defs/weight" },
+        "diagrams": { "$ref": "#/$defs/weight" },
+        "guided_steps": { "$ref": "#/$defs/weight" },
+        "exploratory_sandbox": { "$ref": "#/$defs/weight" },
+        "technical_precision": { "$ref": "#/$defs/weight" },
+        "real_world_analogies": { "$ref": "#/$defs/weight" }
+      },
+      "additionalProperties": false,
+      "_validation_notes": [
+        "theory_first + code_examples_first MUST equal 1.0 (± 0.01 tolerance)",
+        "system_overview_first + incremental_build_up MUST equal 1.0",
+        "narrative_explanation + diagrams MUST equal 1.0",
+        "guided_steps + exploratory_sandbox MUST equal 1.0",
+        "technical_precision + real_world_analogies MUST equal 1.0",
+        "These pairwise sums are enforced in application logic, not expressible in pure JSON Schema."
+      ]
+    },
+
+    "background_context": {
+      "type": "object",
+      "required": ["is_english_native", "known_technologies", "seniority_level"],
+      "properties": {
+        "is_english_native": { "type": "boolean" },
+        "response_language_variant": {
+          "type": "object",
+          "description": "Maps a short language code to a regional variant code only (e.g. 'en': 'en-GB'). This field is NOT for vocabulary-complexity instructions or free-text style notes — that calibration is handled solely by is_english_native. Values must be short locale-style codes, not prose.",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+          }
+        },
+        "known_technologies": {
+          "type": "array",
+          "description": "Programming languages, frameworks, libraries and tools the user has worked with. Deliberately broader than just programming languages, so that ticket-coach can build analogies from any prior technology, not only language-to-language ones (e.g. 'this is like Redux, but for server state' is just as valid an anchor as a language comparison).",
+          "items": {
+            "type": "object",
+            "required": ["name", "type", "proficiency"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": {
+                "type": "string",
+                "enum": ["language", "framework", "library", "tool", "platform"],
+                "description": "What kind of technology this is. 'language' = programming language (e.g. PHP, Go). 'framework' = e.g. Laravel, React. 'library' = e.g. Redux, Zustand. 'tool' = e.g. Docker, a CI/CD system. 'platform' = e.g. AWS, a cloud or infra platform."
+              },
+              "proficiency": {
+                "type": "string",
+                "enum": ["learning", "intermediate", "expert"]
+              },
+              "context": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "seniority_level": {
+          "type": "string",
+          "enum": ["junior", "mid", "senior", "staff_plus"]
+        },
+        "preferred_terminology_style": {
+          "type": "string",
+          "enum": ["domain_specific", "generic_cs_terms"]
+        },
+        "session_pace_preference": {
+          "type": "string",
+          "enum": ["short_frequent", "long_deep_focus", "no_preference"]
+        },
+        "additional_context": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["raw_input", "date_added"],
+            "properties": {
+              "raw_input": { "type": "string" },
+              "extracted_notes": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "date_added": { "type": "string", "format": "date" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "update_history": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["trigger", "method", "date"],
+        "properties": {
+          "trigger": {
+            "type": "string",
+            "enum": ["initial_creation", "user_requested_reassessment", "automatic_drift_threshold"]
+          },
+          "method": {
+            "type": "string",
+            "enum": ["full_questionnaire", "short_questionnaire", "confirmation_questionnaire", "behavioral_analysis"]
+          },
+          "date": { "type": "string", "format": "date" },
+          "changes": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object",
+              "oneOf": [
+                {
+                  "required": ["axis", "previous_score", "new_score"],
+                  "properties": {
+                    "axis": { "type": "string" },
+                    "statement_shown": { "type": "string" },
+                    "user_agreement": { "type": "integer", "minimum": 1, "maximum": 5 },
+                    "previous_score": { "$ref": "#/$defs/score" },
+                    "new_score": { "$ref": "#/$defs/score" }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "required": ["field", "previous_value", "new_value"],
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "description": "Descriptive dot-path of the non-axis field that changed, for human/LLM readability only — not a literal JSON Pointer. 'known_technologies' is an array of objects (matched by their 'name' field, not by object key), so a path like 'known_technologies.go.proficiency' means \"the proficiency field of the known_technologies entry whose name is Go\", not a literal nested object access. E.g. 'known_technologies.go.proficiency' or 'background_context.seniority_level'."
+                    },
+                    "previous_value": { "type": "string" },
+                    "new_value": { "type": "string" },
+                    "evidence_summary": {
+                      "type": "string",
+                      "description": "Brief note on what scorecard evidence justified this change, e.g. '4/5 recent Go tickets resolved without code help'."
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+
+  "$defs": {
+    "score": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "weight": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "concretenessAxis": {
+      "type": "object",
+      "properties": {
+        "score": { "$ref": "#/$defs/score" },
+        "label": {
+          "type": "string",
+          "enum": ["theory-leaning", "balanced", "concrete-leaning"],
+          "description": "Describes the axis itself (theory vs concrete-example preference), never a cognitive_weights key name such as 'code_examples_first'."
+        },
+        "confidence": { "type": "string", "enum": ["self-reported", "mixed", "observed"] }
+      },
+      "required": ["score", "label", "confidence"],
+      "additionalProperties": false
+    },
+    "structureAxis": {
+      "type": "object",
+      "properties": {
+        "score": { "$ref": "#/$defs/score" },
+        "label": {
+          "type": "string",
+          "enum": ["top-down-leaning", "balanced", "bottom-up-leaning"],
+          "description": "Describes the axis itself (system-overview vs incremental-build-up preference), never a cognitive_weights key name."
+        },
+        "confidence": { "type": "string", "enum": ["self-reported", "mixed", "observed"] }
+      },
+      "required": ["score", "label", "confidence"],
+      "additionalProperties": false
+    },
+    "modalityAxis": {
+      "type": "object",
+      "properties": {
+        "score": { "$ref": "#/$defs/score" },
+        "label": {
+          "type": "string",
+          "enum": ["textual-leaning", "balanced", "visual-leaning"],
+          "description": "Describes the axis itself (narrative-text vs diagram preference), never a cognitive_weights key name such as 'diagrams'."
+        },
+        "confidence": { "type": "string", "enum": ["self-reported", "mixed", "observed"] }
+      },
+      "required": ["score", "label", "confidence"],
+      "additionalProperties": false
+    },
+    "autonomyAxis": {
+      "type": "object",
+      "properties": {
+        "score": { "$ref": "#/$defs/score" },
+        "label": {
+          "type": "string",
+          "enum": ["guided-leaning", "balanced", "exploratory-leaning"],
+          "description": "Describes the axis itself (guided-steps vs exploratory preference), never a cognitive_weights key name such as 'guided_steps'."
+        },
+        "confidence": { "type": "string", "enum": ["self-reported", "mixed", "observed"] }
+      },
+      "required": ["score", "label", "confidence"],
+      "additionalProperties": false
+    },
+    "abstractionBridgeAxis": {
+      "type": "object",
+      "properties": {
+        "score": { "$ref": "#/$defs/score" },
+        "label": {
+          "type": "string",
+          "enum": ["technical-leaning", "balanced", "analogical-leaning"],
+          "description": "Describes the axis itself (technical-precision vs real-world-analogy preference), never a cognitive_weights key name such as 'real_world_analogies'."
+        },
+        "confidence": { "type": "string", "enum": ["self-reported", "mixed", "observed"] }
+      },
+      "required": ["score", "label", "confidence"],
+      "additionalProperties": false
+    }
+  },
+
+  "_business_rules_not_expressible_in_json_schema": [
+    "delta_max per reassessment = 0.5 (score cannot move more than this in a single update_history entry)",
+    "Minimum evidence threshold: at least 3 of last 5 sessions must show consistent drift signal before automatic_drift_threshold trigger fires",
+    "agreement-to-score formula: new_score = clamp(previous_score + (user_agreement - 3) * 0.3, previous_score - 0.5, previous_score + 0.5), then clamp to [1, 5] overall",
+    "weight formula per pair: weight_B = (score - 1) / 4; weight_A = 1 - weight_B"
+  ]
+}
