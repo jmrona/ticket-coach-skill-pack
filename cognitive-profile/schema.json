@@ -169,8 +169,8 @@
 							},
 							"confidence": {
 								"type": "string",
-								"enum": ["self-reported", "observed"],
-								"description": "'self-reported': the user said so directly in end-of-ticket reflection. 'observed': inferred from behaviour (e.g. repeated real-code escalations on the same concept) without the user naming it themselves."
+								"enum": ["self-reported", "observed", "confirmed"],
+								"description": "'self-reported': the user said so directly in end-of-ticket reflection. 'observed': inferred from behaviour (e.g. repeated real-code escalations on the same concept) without the user naming it themselves. 'confirmed': both a self-report and an independent behavioural observation have pointed at the same concept+scope — the strongest of the three states, since two independent signal types agree."
 							},
 							"date_added": { "type": "string", "format": "date" },
 							"last_reinforced_date": {
