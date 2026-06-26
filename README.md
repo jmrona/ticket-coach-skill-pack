@@ -119,9 +119,10 @@ You'll never see raw scores from either file — `cognitive-profile` deliberatel
   "background_context": {
     "is_english_native": false,
     "known_technologies": [
-      { "name": "Go", "type": "language", "proficiency": "intermediate", "context": "Temporal" }
+      { "name": "Go", "type": "language", "proficiency": "intermediate", "proficiency_confidence": 0.3, "context": "Temporal" }
     ],
-    "seniority_level": "senior"
+    "seniority_level": "senior",
+    "seniority_level_confidence": 0.15
   },
 
   "update_history": [
@@ -129,6 +130,8 @@ You'll never see raw scores from either file — `cognitive-profile` deliberatel
   ]
 }
 ```
+
+`proficiency_confidence` and `seniority_level_confidence` are accumulators, not scores you set — `cognitive-profile` nudges them up (+0.15) or down (-0.10) after each completed ticket based on how strong that ticket's scorecard signal was, and fires the next upgrade once one crosses 0.70 (then resets it to 0). This means a genuine improving streak isn't lost just because it happens to land awkwardly between arbitrary checks, and a single off ticket only dents progress rather than wiping it out.
 
 The full schema (all five axes, all ten weights, every enum) lives in `cognitive-profile/schema.json`.
 
