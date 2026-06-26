@@ -68,6 +68,9 @@ Does profile.json exist?
          ├─ The `learning-trend` skill needs the scorecard history
          │  → FLOW E: Read and hand off scorecards, no user interaction
          │
+         ├─ ticket-coach is reporting a struggling concept (self-reported or observed)
+         │  → FLOW F: Record/update a struggling_concepts entry
+         │
          └─ The user explicitly requests a reassessment
             → FLOW B: Reassessment
 ```
@@ -183,6 +186,19 @@ Triggered when `ticket-coach` finishes its own ticket close-out and hands over t
 2. Return all entries to the consuming skill, in the order they appear in the file (oldest first), with status `scorecards_found`. If the file doesn't exist yet or is empty, return status `no_scorecards_yet`.
 3. The user is not informed of this read operation — it is transparent, like FLOW C.
 4. This skill does not interpret or summarise the data for the consuming skill beyond returning it — presentation and trend analysis is `learning-trend`'s job, not this skill's.
+
+## FLOW F — Record or update a struggling concept (called by ticket-coach)
+
+Triggered when `ticket-coach` reports a concept the user struggled with — either self-reported (end-of-ticket reflection) or observed (a behavioural pattern during the session, e.g. repeatedly needing real code rather than pseudocode for the same underlying concept). `ticket-coach` passes: the `concept` (must be one of the fixed enum values in `schema.json` — if what the user said doesn't map cleanly to one, pick the closest fit rather than inventing a new entry), the `scope` (`"general"` or a technology name), and `confidence` (`"self-reported"` or `"observed"`).
+
+1. Check whether an entry already exists in `struggling_concepts` for this exact `concept` + `scope` pair.
+   - **No existing entry** → append a new one with `date_added` set to today, the given `confidence`, and `resolved: false`.
+   - **Existing entry, currently unresolved** → don't duplicate it. If the new report is `"self-reported"` and the existing one was only `"observed"` (or vice versa), upgrade `confidence` to reflect the stronger signal (a self-report and a behavioural observation agreeing is stronger evidence than either alone) — but don't downgrade an existing `"self-reported"` entry just because a later report happens to be `"observed"`.
+   - **Existing entry, already `resolved: true`** → if this is a fresh report (not just `ticket-coach` re-surfacing the same old session), set `resolved: false` again and update `confidence` per the same rule above — a concept can resurface after being considered resolved, and that's worth tracking honestly rather than treating the old "resolved" as permanent.
+2. If `ticket-coach` reports that it deliberately reinforced an existing concept during this ticket (i.e. this call is updating an existing entry rather than creating a new one, and `ticket-coach` indicates the reinforcement attempt happened and went reasonably well), update `last_reinforced_date` to today. If `ticket-coach` indicates the reinforcement was attempted but didn't go well, update `last_reinforced_date` anyway (it was attempted) but leave `resolved` as `false`.
+3. **This skill never independently decides a concept is `resolved`** — that judgement call belongs to `ticket-coach`, since it's the one actually present for the reinforcement moment. This skill only writes whatever `resolved` value `ticket-coach` reports.
+4. Validate against `schema.json` and save. Do not ask the user for confirmation — this is the same silent-write pattern as scorecards and drift-log-driven updates, not a reassessment-style change that needs explicit approval.
+5. The user is not informed of this write — `ticket-coach` decides separately whether and how to mention any of this to the user (e.g. during its own end-of-ticket reflection in §7, or when deliberately reinforcing a concept) per its own SKILL.md.
 
 ## Observed evidence logging (for use by ticket-coach or other skills)
 

@@ -128,6 +128,65 @@
 						"additionalProperties": false
 					}
 				},
+				"struggling_concepts": {
+					"type": "array",
+					"description": "Specific programming concepts the user has had genuine difficulty with, surfaced either through end-of-ticket reflection (ticket-coach §7) or inferred from a real blocker during a session (e.g. needing real code rather than pseudocode on the same concept repeatedly). Used to bring relevant concepts back deliberately in future tickets that touch them, rather than treating every ticket as isolated. This is NOT the same as cognitive_weights (how the user prefers to learn) — this is what topics, specifically.",
+					"items": {
+						"type": "object",
+						"required": ["concept", "scope", "confidence", "date_added"],
+						"properties": {
+							"concept": {
+								"type": "string",
+								"enum": [
+									"loops",
+									"recursion",
+									"conditionals",
+									"error_handling",
+									"concurrency",
+									"pointers_references",
+									"memory_management",
+									"type_systems",
+									"generics",
+									"closures",
+									"async_await",
+									"data_structures",
+									"algorithms_complexity",
+									"testing",
+									"debugging",
+									"api_design",
+									"state_management",
+									"dependency_injection",
+									"design_patterns",
+									"database_queries",
+									"build_tooling",
+									"version_control"
+								],
+								"description": "A fixed, language-agnostic taxonomy of concepts, deliberately closed so the same struggle doesn't get recorded under several different names across tickets (e.g. always 'loops', never 'bucles' or 'for-loops' as separate entries)."
+							},
+							"scope": {
+								"type": "string",
+								"description": "Either the literal string 'general' (the concept is difficult across languages/contexts, e.g. testing discipline), or a technology name matching an entry in known_technologies[].name (the concept is specifically difficult in that technology, e.g. concurrency in Go but not in PHP)."
+							},
+							"confidence": {
+								"type": "string",
+								"enum": ["self-reported", "observed"],
+								"description": "'self-reported': the user said so directly in end-of-ticket reflection. 'observed': inferred from behaviour (e.g. repeated real-code escalations on the same concept) without the user naming it themselves."
+							},
+							"date_added": { "type": "string", "format": "date" },
+							"last_reinforced_date": {
+								"type": "string",
+								"format": "date",
+								"description": "The last date ticket-coach deliberately brought this concept back for reinforcement in a relevant ticket. Absent if it has never been reinforced yet."
+							},
+							"resolved": {
+								"type": "boolean",
+								"default": false,
+								"description": "Set true once the concept has been deliberately reinforced and gone well on a subsequent occasion (ticket-coach's judgement, not an automatic count). A resolved entry is kept for history rather than deleted, but ticket-coach stops actively bringing it back once true."
+							}
+						},
+						"additionalProperties": false
+					}
+				},
 				"seniority_level": {
 					"type": "string",
 					"enum": ["junior", "mid", "senior", "staff_plus"]

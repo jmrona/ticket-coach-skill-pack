@@ -80,6 +80,8 @@ When the user wants to start working a ticket with this skill:
 
 ## 2. Analysis and phases
 
+**Before generating phases, check for relevant struggling concepts.** If a profile is loaded, look at `background_context.struggling_concepts` for any unresolved entry (`resolved: false`) whose `scope` matches a technology this ticket involves, or whose `scope` is `"general"`. If this ticket's content plausibly touches that concept (e.g. an unresolved `loops` entry scoped to Go, and this ticket involves writing a loop in Go), treat that as a deliberate cue to spend a bit more care on that concept specifically when it comes up — in §3's step-by-step guidance, give it slightly more explicit attention than you would by default (e.g. an extra beat making sure the *why*, not just the *what*, lands before moving on), and note internally (no need to announce it to the user up front) that this is a reinforcement opportunity. Don't force a concept into a ticket that doesn't naturally touch it, and don't mention to the user that you're "testing" a known weak spot — that would make the moment feel like an exam rather than a normal part of the work. If the concept comes up and goes well this time, report that back to `cognitive-profile`'s FLOW F at the relevant point (when that step is actually verified in §4) with `resolved: true` and today as `last_reinforced_date`; if it comes up and still doesn't land, report `last_reinforced_date` updated but `resolved` staying `false`.
+
 Generate the phases by combining a base template with ticket-specific adjustments:
 
 **Base template** (adjust it, don't repeat it mechanically):
@@ -182,6 +184,7 @@ When the user asks for specific help on how to write something (e.g. "how do I r
 1. Check whether the relevant files have changed since they were last given help (compare against the diff hash stored in `code_help_log`, or simply re-run `git diff` on those files and compare with what you saw last time).
 2. **If there were changes** → treat this as active iteration, not a blocker. Give pseudocode again, adjusted to what they've now written. Don't escalate yet.
 3. **If there were NO changes at all since last time** → this is the genuine-blocker signal. Now give the real code (in the relevant language, e.g. Go), but always alongside an explanation of what it does and why — never just a bare code block. The goal is still for them to learn, even though at this point they need to see the actual code to get unstuck.
+4. **After a genuine blocker (step 3), identify what it was actually about** — not the file, the underlying concept (e.g. the blocker was nominally about `activity.go`, but the actual sticking point was understanding how Go's `select` works across channels — that's the concurrency concept, not the file). If this is the **second time in the current session** a genuine blocker traces back to the same underlying concept (even across different files or different steps), that's a real signal worth carrying forward — hand it off to `cognitive-profile`'s FLOW F with `confidence: "observed"`, the matching `concept` from the fixed enum, and `scope` set to the relevant technology (or `"general"` if it doesn't seem tied to one). Don't log this on the *first* genuine blocker on a concept — one instance isn't a pattern, it's just a normal learning moment.
 
 Log every help request in the session file (file, diff hash at the time, counter) so this logic can be applied next time.
 
@@ -205,7 +208,12 @@ Once the final phase (usually "Validate and review") is complete and verified:
    - **`repeated_questions`**: derive from `verification_false_claims` — 0 → 5, 1 → 4, 2 → 3, 3 → 2, 4+ → 1.
 
    These mappings are intentionally simple linear scales — don't overthink edge cases beyond them; the scorecard is meant to be a rough trend signal over time, not a precise measurement.
-3. Delete the session file for that ticket from the sessions folder. Don't let completed session files pile up. Do this only after the scorecard hand-off in step 2 has completed.
+3. **Brief end-of-ticket reflection**, before closing out. Ask one open question — something like "Before we close this out: was there anything in this ticket that was genuinely tricky to wrap your head around?" Keep it to one question, don't turn this into a debrief. If the user names something concrete (e.g. "the loop logic took me a while", "I still don't really get how the error wrapping works"):
+   - Map what they said to the closest fit in `struggling_concepts`'s fixed concept enum (see `cognitive-profile`'s `schema.json`) — don't invent a new label if an existing one is a reasonable match.
+   - Decide `scope`: the specific technology this ticket was in if the struggle seems tied to it, or `"general"` if it reads as cross-language.
+   - Hand this off to `cognitive-profile`'s FLOW F with `confidence: "self-reported"`.
+   - If the user says there wasn't anything in particular, don't push for one — a clean "no" is a fine answer and not every ticket needs to surface something.
+4. Delete the session file for that ticket from the sessions folder. Don't let completed session files pile up. Do this only after the scorecard hand-off in step 2 and the reflection hand-off in step 3 (if any) have completed.
 
 ## Handling ambiguous responses
 
