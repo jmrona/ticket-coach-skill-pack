@@ -92,6 +92,30 @@ def validate(profile_path: Path) -> bool:
             else:
                 print(f"[OK] Axis '{change.get('axis')}' delta {delta} within bounds")
 
+    # 4. Confidence accumulators (proficiency_confidence, seniority_level_confidence)
+    #    must stay within [0, 1] — schema already enforces this, but check explicitly
+    #    here too since these are easy to get wrong with the +0.15/-0.10 step logic.
+    CONFIDENCE_BOUNDS = (0.0, 1.0)
+    for tech in profile.get("background_context", {}).get("known_technologies", []):
+        if "proficiency_confidence" not in tech:
+            continue
+        val = tech["proficiency_confidence"]
+        lo, hi = CONFIDENCE_BOUNDS
+        if not (lo - TOLERANCE <= val <= hi + TOLERANCE):
+            print(f"[FAIL] {tech.get('name')}.proficiency_confidence = {val} (expected [{lo}, {hi}])")
+            ok = False
+        else:
+            print(f"[OK] {tech.get('name')}.proficiency_confidence = {val}")
+
+    seniority_conf = profile.get("background_context", {}).get("seniority_level_confidence")
+    if seniority_conf is not None:
+        lo, hi = CONFIDENCE_BOUNDS
+        if not (lo - TOLERANCE <= seniority_conf <= hi + TOLERANCE):
+            print(f"[FAIL] seniority_level_confidence = {seniority_conf} (expected [{lo}, {hi}])")
+            ok = False
+        else:
+            print(f"[OK] seniority_level_confidence = {seniority_conf}")
+
     return ok
 
 
