@@ -27,14 +27,40 @@ permission:
   question: allow
   todowrite: allow
   skill: allow
+  # doom_loop defaults to "ask" and fires when the same tool call repeats three
+  # times with identical input. This agent's verification loop re-runs identical
+  # `git status` / `git diff` calls by design, once per task, so the guard fires
+  # constantly and the prompt names the git command — which reads as the bash
+  # allowlist not working. The agent is read-only on the repo, so the guard buys
+  # little here. Remove this line if you'd rather keep the safety net.
+  doom_loop: allow
   bash:
     "*": ask
     "ls*": allow
     "cat*": allow
     "mkdir -p*": allow
+    # Pipe/compound helpers: `bash` permissions match each parsed sub-command,
+    # so `git diff --stat | head -50` is checked as BOTH `git diff --stat` and
+    # `head -50`. Without these, every piped read-only command prompts.
+    # Deliberately read-only — no sed/awk (sed -i writes), no xargs, no find.
+    "head*": allow
+    "tail*": allow
+    "wc*": allow
+    "sort*": allow
+    "uniq*": allow
+    "cut*": allow
+    "nl*": allow
+    "tr*": allow
+    "jq*": allow
+    "echo*": allow
+    "cd*": allow
+    "basename*": allow
+    "dirname*": allow
+    "true": allow
     "rm ~/.config/opencode/data/ticket-coach/sessions/*": allow
     "rm /Users/*/.config/opencode/data/ticket-coach/sessions/*": allow
     "git branch*": allow
+    "git show*": allow
     "git status*": allow
     "git diff*": allow
     "git log*": allow
