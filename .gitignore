@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Editor / tooling scratch
+.playwright-mcp/
+.idea/
+.vscode/
+*.swp
+
+# Python bytecode (cognitive-profile/validate_profile.py)
+__pycache__/
+*.pyc

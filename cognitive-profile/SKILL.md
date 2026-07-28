@@ -51,6 +51,7 @@ This skill must not read or write any path other than the ones declared above. A
 | Onboarding questionnaire | `~/.config/opencode/skills/cognitive-profile/onboarding-questionnaire.md` | Onboarding statements |
 | Drift evidence log | `~/.config/opencode/data/cognitive-profile/drift-log.jsonl` | Behavioural signals logged by consumer skills (e.g. ticket-coach) |
 | Per-ticket scorecards | `~/.config/opencode/data/cognitive-profile/scorecards.jsonl` | One line per completed ticket, appended by `ticket-coach`; read and interpreted only by this skill (e.g. by `learning-trend`, via FLOW E) |
+| Coaching notes | `~/.config/opencode/data/cognitive-profile/coaching-notes.jsonl` | Qualitative memos written **and** read by `ticket-coach` alone (see below). This skill never reads them and they never affect any score |
 
 ## Decision flow on activation
 
@@ -124,7 +125,7 @@ Does profile.json exist?
 
 1. Check whether `profile.json` exists **before** attempting to read it (e.g. via a file-exists/list check, not a direct read-and-catch) — this is the very first call this skill makes on a brand-new install, so its absence is an entirely normal, expected outcome, never a file-system error to surface.
 2. If it exists, read it and return the full document (`cognitive_profile`, `cognitive_weights`, `background_context`) to the consuming skill, with status `profile_found`. The user is not informed of this read operation — it is transparent, like any other configuration read.
-3. If `profile.json` does not exist, check whether `onboarding-preference.json` exists **before** attempting to read it (e.g. via a file-exists/list check, not a direct read-and-catch). Its absence on a first-ever run is the normal, expected case — not a file-system error — so the check must never surface a raw "file not found" error to the user or in tool output. Then:
+3. If `profile.json` does not exist, check whether `onboarding-preference.json` exists **before** attempting to read it (e.g. via a file-exists/list check, not a direct read-and-catch). A single directory listing of `~/.config/opencode/data/cognitive-profile/` is enough to answer both this check and step 1's `profile.json` check at once — reuse that same listing here instead of issuing a second, separate check, and don't follow it with a direct read of `onboarding-preference.json` unless that listing already showed the file is actually there. Its absence on a first-ever run is the normal, expected case — not a file-system error — so the check must never surface a raw "file not found" error to the user or in tool output. Then:
    - If it doesn't exist → treat this exactly the same as "exists with `declined: false`" (see below) — return status `no_profile_no_decision` directly, without ever attempting to read a file you've already confirmed isn't there.
    - If it exists → read it and check its content:
      - `declined: true` → return status `declined_previously` to the consuming skill, with no further action. This skill does not re-ask the user and does not expect the consuming skill to ask either, unless the user explicitly requests a profile in that moment (e.g. "actually, let's set up that learning profile now") — in that case, treat it as a fresh explicit request and proceed to FLOW A, then update `onboarding-preference.json` to `declined: false` afterwards.
@@ -233,6 +234,16 @@ Each line is a JSON object: `{ "date": "...", "axis": "concreteness", "signal": 
 This skill (`cognitive-profile`) is solely responsible for reading `drift-log.jsonl`, deciding whether it crosses the evidence threshold (minimum 3 consistent signals out of the last 5 logged sessions) and internally triggering an `automatic_drift_threshold` reassessment — without the user needing to request it, but always confirming the result with them before applying it (showing qualitative statements just as in FLOW B; never applying silent changes without user confirmation). As with every other file in this skill, check whether `drift-log.jsonl` exists before reading it; its absence simply means no drift evidence has accumulated yet, not an error.
 
 By default, this skill ALWAYS confirms with the user before applying any score change, regardless of the trigger.
+
+### Not to be confused with `coaching-notes.jsonl`
+
+`ticket-coach` also keeps `~/.config/opencode/data/cognitive-profile/coaching-notes.jsonl` in this same directory, for its own durable memory of how to coach this person (pacing preferences, setup constraints, things they've clearly mastered). It lives here because it's profile-adjacent data about the same user, not because this skill owns it:
+
+- **This skill never reads it and never writes it.** It is not evidence, it does not count toward the drift threshold, and it never influences a score.
+- `ticket-coach` writes it and `ticket-coach` reads it, at its own session start.
+- Anything that genuinely *is* scoring evidence belongs in `drift-log.jsonl` (behavioural signals), `scorecards.jsonl` (per-ticket results), or `struggling_concepts` via FLOW F — never in the notes file instead.
+
+The separation matters: scores are governed, confirmed with the user, and schema-validated. Coaching notes are free-form working memory for one skill. Keeping them in different files is what stops the second from quietly becoming the first.
 
 ## Validation rules (summary — see schema.json for the formal detail)
 
